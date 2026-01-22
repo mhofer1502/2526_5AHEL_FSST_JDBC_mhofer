@@ -14,7 +14,7 @@ import javafx.scene.control.Alert.AlertType;
 
 import java.sql.*;
 import java.util.ArrayList;
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -31,13 +31,14 @@ public class HelloController {
     @FXML
     private NumberAxis yAxis;
 
-    // Datenbank-Verbindungsdaten
+    // Datenbank-Verbindungsdaten - BITTE ANPASSEN!
     private static final String DB_URL = "jdbc:postgresql://xserv:5432/world2";
-    private static final String DB_USER = "root";
-    private static final String DB_PASSWORD = "";
+    private static final String DB_USER = "reader";  // Oft "postgres" statt "root"
+    private static final String DB_PASSWORD = "reader";      // Ihr Passwort hier eintragen
 
     @FXML
     public void initialize() {
+        System.out.println("Controller wird initialisiert...");
         setupChart();
         loadCountries();
     }
@@ -46,6 +47,7 @@ public class HelloController {
         xAxis.setLabel("District");
         yAxis.setLabel("Anzahl Städte");
         districtBarChart.setTitle("Städte pro District");
+        districtBarChart.setLegendVisible(false);
     }
 
     private void loadCountries() {
@@ -53,71 +55,79 @@ public class HelloController {
             List<String> countries = new ArrayList<>();
 
             try {
-                // JDBC-Treiber laden (für PostgreSQL)
+                // PostgreSQL JDBC-Treiber laden
                 Class.forName("org.postgresql.Driver");
+                System.out.println("PostgreSQL-Treiber geladen");
 
-                System.out.println("Versuche Verbindung zur Datenbank herzustellen...");
+                System.out.println("Versuche Verbindung herzustellen zu: " + DB_URL);
 
                 try (Connection conn = DriverManager.getConnection(DB_URL, DB_USER, DB_PASSWORD)) {
-                    System.out.println("Verbindung erfolgreich!");
+                    System.out.println("✓ Datenbankverbindung erfolgreich!");
 
-                    // Teste verschiedene mögliche Spaltennamen
-                    String query = "SELECT DISTINCT name FROM country ORDER BY name";
+                    String query = "SELECT name FROM country ORDER BY name";
 
                     try (Statement stmt = conn.createStatement();
                          ResultSet rs = stmt.executeQuery(query)) {
 
-                        int count = 0;
                         while (rs.next()) {
-                            countries.add(rs.getString("name"));
-                            count++;
+                            String countryName = rs.getString("name");
+                            countries.add(countryName);
                         }
-                        System.out.println("Anzahl geladener Länder: " + count);
 
-                    } catch (SQLException e) {
-                        System.err.println("Fehler bei SQL-Query: " + e.getMessage());
-                        e.printStackTrace();
+                        System.out.println("✓ " + countries.size() + " Länder geladen");
+
                     }
                 }
 
             } catch (ClassNotFoundException e) {
-                System.err.println("PostgreSQL-Treiber nicht gefunden!");
+                System.err.println("✗ PostgreSQL-Treiber nicht gefunden!");
+                System.err.println("Fügen Sie diese Dependency in pom.xml hinzu:");
+                System.err.println("<dependency>");
+                System.err.println("    <groupId>org.postgresql</groupId>");
+                System.err.println("    <artifactId>postgresql</artifactId>");
+                System.err.println("    <version>42.7.0</version>");
+                System.err.println("</dependency>");
                 e.printStackTrace();
-                showError("Datenbanktreiber fehlt", "PostgreSQL JDBC-Treiber wurde nicht gefunden.");
+                Platform.runLater(() -> showError("Treiber fehlt",
+                        "PostgreSQL JDBC-Treiber wurde nicht gefunden.\nBitte pom.xml prüfen."));
                 return;
+
             } catch (SQLException e) {
-                System.err.println("Datenbankverbindungsfehler: " + e.getMessage());
+                System.err.println("✗ Datenbankfehler: " + e.getMessage());
                 e.printStackTrace();
-                showError("Datenbankfehler", "Verbindung zur Datenbank fehlgeschlagen:\n" + e.getMessage());
+                Platform.runLater(() -> showError("Datenbankfehler",
+                        "Verbindung fehlgeschlagen:\n" + e.getMessage() +
+                                "\n\nBitte prüfen Sie:\n- Server erreichbar?\n- Benutzername korrekt?\n- Passwort korrekt?"));
                 return;
             }
 
-            // UI-Update im JavaFX-Thread
+            // ComboBox im JavaFX-Thread aktualisieren
             Platform.runLater(() -> {
                 if (!countries.isEmpty()) {
                     ObservableList<String> countryList = FXCollections.observableArrayList(countries);
                     countryComboBox.setItems(countryList);
-                    System.out.println("ComboBox wurde mit " + countries.size() + " Ländern befüllt");
+                    System.out.println("✓ ComboBox mit " + countries.size() + " Ländern befüllt");
                 } else {
-                    System.err.println("Keine Länder gefunden!");
-                    showError("Keine Daten", "Es wurden keine Länder in der Datenbank gefunden.");
+                    System.err.println("✗ Keine Länder gefunden!");
+                    showError("Keine Daten", "Es wurden keine Länder gefunden.");
                 }
             });
+
         }).start();
     }
 
     @FXML
     private void onCountrySelected() {
         String selectedCountry = countryComboBox.getValue();
-        System.out.println("Land ausgewählt: " + selectedCountry);
-        if (selectedCountry != null) {
+        if (selectedCountry != null && !selectedCountry.isEmpty()) {
+            System.out.println("Land ausgewählt: " + selectedCountry);
             loadDistrictData(selectedCountry);
         }
     }
 
     private void loadDistrictData(String country) {
         new Thread(() -> {
-            Map<String, Integer> districtCounts = new HashMap<>();
+            Map<String, Integer> districtCounts = new LinkedHashMap<>();
 
             String query = "SELECT c.district, COUNT(*) as city_count " +
                     "FROM city c " +
@@ -130,35 +140,41 @@ public class HelloController {
                  PreparedStatement pstmt = conn.prepareStatement(query)) {
 
                 pstmt.setString(1, country);
-                ResultSet rs = pstmt.executeQuery();
 
-                int count = 0;
-                while (rs.next()) {
-                    String district = rs.getString("district");
-                    int cityCount = rs.getInt("city_count");
-                    districtCounts.put(district, cityCount);
-                    count++;
+                try (ResultSet rs = pstmt.executeQuery()) {
+                    while (rs.next()) {
+                        String district = rs.getString("district");
+                        int cityCount = rs.getInt("city_count");
+
+                        // Leere Districts überspringen
+                        if (district != null && !district.trim().isEmpty()) {
+                            districtCounts.put(district, cityCount);
+                        }
+                    }
                 }
 
-                System.out.println("Anzahl Districts für " + country + ": " + count);
+                System.out.println("✓ " + districtCounts.size() + " Districts für '" + country + "' geladen");
 
-                // UI-Update im JavaFX-Thread
-                Platform.runLater(() -> updateChart(districtCounts));
+                // Chart im JavaFX-Thread aktualisieren
+                final Map<String, Integer> finalCounts = districtCounts;
+                Platform.runLater(() -> updateChart(finalCounts, country));
 
             } catch (SQLException e) {
-                System.err.println("Fehler beim Laden der District-Daten: " + e.getMessage());
+                System.err.println("✗ Fehler beim Laden der Districts: " + e.getMessage());
                 e.printStackTrace();
                 Platform.runLater(() -> showError("Datenfehler",
                         "Fehler beim Laden der District-Daten:\n" + e.getMessage()));
             }
+
         }).start();
     }
 
-    private void updateChart(Map<String, Integer> districtCounts) {
+    private void updateChart(Map<String, Integer> districtCounts, String country) {
         districtBarChart.getData().clear();
 
         if (districtCounts.isEmpty()) {
-            System.out.println("Keine Districts gefunden!");
+            System.out.println("⚠ Keine Districts für " + country + " gefunden");
+            districtBarChart.setTitle("Keine Daten für " + country + " vorhanden");
             return;
         }
 
@@ -170,7 +186,9 @@ public class HelloController {
         }
 
         districtBarChart.getData().add(series);
-        System.out.println("Chart aktualisiert mit " + districtCounts.size() + " Districts");
+        districtBarChart.setTitle("Städte pro District in " + country);
+
+        System.out.println("✓ Chart aktualisiert mit " + districtCounts.size() + " Districts");
     }
 
     private void showError(String title, String message) {

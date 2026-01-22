@@ -7,24 +7,43 @@
 <?import javafx.scene.control.ComboBox?>
 <?import javafx.scene.control.Label?>
 <?import javafx.scene.layout.VBox?>
+<?import javafx.scene.layout.HBox?>
 
-<VBox alignment="TOP_CENTER" spacing="20.0" xmlns:fx="http://javafx.com/fxml"
-      fx:controller="com.example.jdbcdatenvisualisierung.HelloController">
+<VBox alignment="TOP_CENTER" spacing="15.0"
+      xmlns:fx="http://javafx.com/fxml"
+      fx:controller="com.example.jdbcdatenvisualisierung.HelloController"
+      style="-fx-background-color: #f5f5f5;">
+
   <padding>
     <Insets bottom="20.0" left="20.0" right="20.0" top="20.0"/>
   </padding>
 
-  <Label text="Land auswählen:" style="-fx-font-size: 14px; -fx-font-weight: bold;"/>
+  <HBox alignment="CENTER_LEFT" spacing="10.0">
+    <Label text="Land auswählen:"
+           style="-fx-font-size: 14px; -fx-font-weight: bold;"/>
 
-  <ComboBox fx:id="countryComboBox" onAction="#onCountrySelected"
-            promptText="Bitte Land auswählen..." prefWidth="300.0"/>
+    <ComboBox fx:id="countryComboBox"
+              onAction="#onCountrySelected"
+              promptText="Bitte wählen Sie ein Land..."
+              prefWidth="350.0"
+              style="-fx-font-size: 13px;"/>
+  </HBox>
 
-  <BarChart fx:id="districtBarChart" VBox.vgrow="ALWAYS" legendVisible="false">
+  <BarChart fx:id="districtBarChart"
+            VBox.vgrow="ALWAYS"
+            animated="true"
+            categoryGap="5.0"
+            barGap="3.0">
     <xAxis>
-      <CategoryAxis fx:id="xAxis" side="BOTTOM"/>
+      <CategoryAxis fx:id="xAxis"
+                    side="BOTTOM"
+                    tickLabelRotation="45"/>
     </xAxis>
     <yAxis>
-      <NumberAxis fx:id="yAxis" side="LEFT"/>
+      <NumberAxis fx:id="yAxis"
+                  side="LEFT"
+                  autoRanging="true"/>
     </yAxis>
   </BarChart>
+
 </VBox>
