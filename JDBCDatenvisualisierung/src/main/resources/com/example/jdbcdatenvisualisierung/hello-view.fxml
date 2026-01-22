@@ -1,16 +1,30 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
 <?import javafx.geometry.Insets?>
+<?import javafx.scene.chart.BarChart?>
+<?import javafx.scene.chart.CategoryAxis?>
+<?import javafx.scene.chart.NumberAxis?>
+<?import javafx.scene.control.ComboBox?>
 <?import javafx.scene.control.Label?>
 <?import javafx.scene.layout.VBox?>
 
-<?import javafx.scene.control.Button?>
-<VBox alignment="CENTER" spacing="20.0" xmlns:fx="http://javafx.com/fxml"
-      fx:controller="com.example.jdbc.HelloController">
+<VBox alignment="TOP_CENTER" spacing="20.0" xmlns:fx="http://javafx.com/fxml"
+      fx:controller="com.example.jdbcdatenvisualisierung.HelloController">
   <padding>
     <Insets bottom="20.0" left="20.0" right="20.0" top="20.0"/>
   </padding>
 
-  <Label fx:id="welcomeText"/>
-  <Button text="Hello!" onAction="#onHelloButtonClick"/>
+  <Label text="Land auswählen:" style="-fx-font-size: 14px; -fx-font-weight: bold;"/>
+
+  <ComboBox fx:id="countryComboBox" onAction="#onCountrySelected"
+            promptText="Bitte Land auswählen..." prefWidth="300.0"/>
+
+  <BarChart fx:id="districtBarChart" VBox.vgrow="ALWAYS" legendVisible="false">
+    <xAxis>
+      <CategoryAxis fx:id="xAxis" side="BOTTOM"/>
+    </xAxis>
+    <yAxis>
+      <NumberAxis fx:id="yAxis" side="LEFT"/>
+    </yAxis>
+  </BarChart>
 </VBox>
